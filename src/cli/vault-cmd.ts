@@ -16,6 +16,11 @@ function promptPassphrase(prompt: string): Promise<string> {
 export async function vaultEncryptCmd(envFilePath: string, vaultFilePath?: string): Promise<void> {
   const outPath = vaultFilePath ?? envFilePath + '.vault';
   const passphrase = await promptPassphrase('Passphrase: ');
+  const confirm = await promptPassphrase('Confirm passphrase: ');
+  if (passphrase !== confirm) {
+    console.error('Error: passphrases do not match.');
+    process.exit(1);
+  }
   const fs = await import('fs');
   const plaintext = fs.readFileSync(envFilePath, 'utf8');
   writeVaultFile(outPath, plaintext, passphrase);
