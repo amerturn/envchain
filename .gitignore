@@ -1,0 +1,9 @@
+node_modules/
+
+*~
+*.tsbuildinfo
+.cache/
+npm-debug.log*
+*.js.map
+dist/
+out/
