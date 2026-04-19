@@ -1,65 +1,57 @@
+import { describe, it, expect } from 'vitest';
+import { writeFileSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { sortEnvKeys, sortEnvFile, formatSortResult } from './sort';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 
 function tmpFile(content: string): string {
-  const p = path.join(os.tmpdir(), `sort-test-${Date.now()}.env`);
-  fs.writeFileSync(p, content, 'utf8');
+  const p = join(tmpdir(), `sort-test-${Date.now()}.env`);
+  writeFileSync(p, content);
   return p;
 }
 
 describe('sortEnvKeys', () => {
-  it('sorts keys ascending by default', () => {
-    const env = { ZEBRA: '1', APPLE: '2', MANGO: '3' };
-    const result = sortEnvKeys(env);
+  it('sorts keys alphabetically', () => {
+    const input = { ZEBRA: '1', APPLE: '2', MANGO: '3' };
+    const result = sortEnvKeys(input);
     expect(Object.keys(result)).toEqual(['APPLE', 'MANGO', 'ZEBRA']);
   });
 
-  it('sorts keys descending', () => {
-    const env = { ZEBRA: '1', APPLE: '2', MANGO: '3' };
-    const result = sortEnvKeys(env, 'desc');
-    expect(Object.keys(result)).toEqual(['ZEBRA', 'MANGO', 'APPLE']);
+  it('preserves values after sort', () => {
+    const input = { Z: 'last', A: 'first' };
+    const result = sortEnvKeys(input);
+    expect(result['A']).toBe('first');
+    expect(result['Z']).toBe('last');
   });
 
-  it('preserves values', () => {
-    const env = { B: 'two', A: 'one' };
-    const result = sortEnvKeys(env);
-    expect(result).toEqual({ A: 'one', B: 'two' });
+  it('handles empty map', () => {
+    expect(sortEnvKeys({})).toEqual({});
   });
 });
 
 describe('sortEnvFile', () => {
-  it('rewrites file when unsorted', () => {
-    const p = tmpFile('ZEBRA=1\nAPPLE=2\n');
-    const result = sortEnvFile(p);
-    expect(result.changed).toBe(true);
-    const written = fs.readFileSync(p, 'utf8');
-    expect(written.indexOf('APPLE')).toBeLessThan(written.indexOf('ZEBRA'));
-    fs.unlinkSync(p);
+  it('writes sorted env to output file', () => {
+    const src = tmpFile('ZEBRA=1\nAPPLE=2\nMANGO=3\n');
+    const out = join(tmpdir(), `sort-out-${Date.now()}.env`);
+    const result = sortEnvFile(src, out);
+    const written = readFileSync(out, 'utf8');
+    expect(written).toContain('APPLE=2');
+    expect(written.indexOf('APPLE')).toBeLessThan(written.indexOf('MANGO'));
+    expect(result.sorted).toBe(3);
   });
 
-  it('does not rewrite file when already sorted', () => {
-    const p = tmpFile('APPLE=2\nZEBRA=1\n');
-    const before = fs.statSync(p).mtimeMs;
-    const result = sortEnvFile(p);
-    expect(result.changed).toBe(false);
-    fs.unlinkSync(p);
+  it('returns zero sorted for empty file', () => {
+    const src = tmpFile('');
+    const out = join(tmpdir(), `sort-out-empty-${Date.now()}.env`);
+    const result = sortEnvFile(src, out);
+    expect(result.sorted).toBe(0);
   });
 });
 
 describe('formatSortResult', () => {
-  it('returns already sorted message when unchanged', () => {
-    const env = { A: '1' };
-    const msg = formatSortResult({ original: env, sorted: env, changed: false }, 'asc');
-    expect(msg).toContain('Already sorted');
-  });
-
-  it('lists sorted keys when changed', () => {
-    const original = { B: '2', A: '1' };
-    const sorted = { A: '1', B: '2' };
-    const msg = formatSortResult({ original, sorted, changed: true }, 'asc');
-    expect(msg).toContain('A');
-    expect(msg).toContain('B');
+  it('formats result message', () => {
+    const msg = formatSortResult({ sorted: 4, output: '/tmp/out.env' });
+    expect(msg).toContain('4');
+    expect(msg).toContain('/tmp/out.env');
   });
 });
