@@ -44,3 +44,17 @@ export function formatLintResult(result: LintResult): string {
   }
   return lines.join('\n');
 }
+
+/**
+ * Merges lint results from multiple targets into a summary result.
+ * The combined result is ok only if all individual results are ok.
+ */
+export function mergeLintResults(results: LintResult[]): LintResult {
+  const issues = results.flatMap(r => r.issues);
+  const targets = results.map(r => r.target).join(', ');
+  return {
+    target: targets,
+    issues,
+    ok: results.every(r => r.ok),
+  };
+}
