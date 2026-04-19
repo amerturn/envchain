@@ -22,6 +22,9 @@ export function encryptEnv(plaintext: string, passphrase: string): string {
 
 export function decryptEnv(ciphertext: string, passphrase: string): string {
   const buf = Buffer.from(ciphertext, 'base64');
+  if (buf.length < 44) {
+    throw new Error('Invalid ciphertext: too short to contain required salt, IV, and auth tag.');
+  }
   const salt = buf.subarray(0, 16);
   const iv = buf.subarray(16, 28);
   const tag = buf.subarray(28, 44);
@@ -29,7 +32,11 @@ export function decryptEnv(ciphertext: string, passphrase: string): string {
   const key = deriveKey(passphrase, salt);
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
-  return decipher.update(encrypted) + decipher.final('utf8');
+  try {
+    return decipher.update(encrypted) + decipher.final('utf8');
+  } catch {
+    throw new Error('Decryption failed: invalid passphrase or corrupted data.');
+  }
 }
 
 export function writeVaultFile(filePath: string, plaintext: string, passphrase: string): void {
