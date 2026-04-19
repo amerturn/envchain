@@ -21,7 +21,7 @@ export function registerPromoteCmd(program: Command): void {
       }
 
       try {
-        const result = await promoteEnv(from, to, snapshotsDir, configDir, opts.overwrite);
+        const result = await promoteEnv(from, to, snapshotsDir, configDir, opts.overwrite, opts.dryRun);
         console.log(formatPromoteResult(result));
 
         if (opts.dryRun) {
@@ -32,7 +32,11 @@ export function registerPromoteCmd(program: Command): void {
         const applied = Object.keys(result.applied).length;
         console.log(`\n✔ ${applied} variable(s) promoted from ${from} to ${to}.`);
       } catch (err: any) {
-        console.error(`Error: ${err.message}`);
+        if (err.code === 'ENOENT') {
+          console.error(`Error: Snapshot file not found for target "${from}". Has it been snapshotted?`);
+        } else {
+          console.error(`Error: ${err.message}`);
+        }
         process.exit(1);
       }
     });
