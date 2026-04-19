@@ -17,6 +17,9 @@ export async function detectDrift(
   snapshotId: string
 ): Promise<DriftReport> {
   const snapshot = await readSnapshot(snapshotDir, target, snapshotId);
+  if (!snapshot) {
+    throw new Error(`Snapshot '${snapshotId}' not found for target '${target}' in '${snapshotDir}'`);
+  }
   const diff = diffEnv(snapshot.env, currentEnv);
   const drifted = diff.added.length > 0 || diff.removed.length > 0 || diff.changed.length > 0;
   return { target, snapshotId, drifted, diff };
