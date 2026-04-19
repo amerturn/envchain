@@ -62,6 +62,19 @@ describe('runWithEnv', () => {
     expect(code).toBe(0);
   });
 
+  it('returns non-zero exit code when process exits with failure', async () => {
+    vi.mocked(loadConfigFromCwd).mockResolvedValue({} as any);
+    vi.mocked(getTargetNames).mockReturnValue(['dev']);
+    vi.mocked(requireTarget).mockReturnValue({} as any);
+    vi.mocked(resolveTargetChain).mockReturnValue([]);
+    vi.mocked(flattenTargetEnv).mockReturnValue({});
+    vi.mocked(resolveEnv).mockReturnValue({});
+    vi.mocked(spawnSync).mockReturnValue({ status: 1, error: undefined } as any);
+
+    const code = await runWithEnv({ target: 'dev', command: ['exit', '1'] });
+    expect(code).toBe(1);
+  });
+
   it('throws if spawnSync returns an error', async () => {
     vi.mocked(loadConfigFromCwd).mockResolvedValue({} as any);
     vi.mocked(getTargetNames).mockReturnValue(['dev']);
