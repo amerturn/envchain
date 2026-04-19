@@ -42,7 +42,11 @@ export function writeTagFile(
 
 export function readTagFile(filePath: string): Record<string, string[]> {
   if (!fs.existsSync(filePath)) return {};
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
+    throw new Error(`Failed to parse tag file at ${filePath}: file may be corrupted`);
+  }
 }
 
 export function tagFilePath(dir: string): string {
