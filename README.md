@@ -34,6 +34,9 @@ envchain export --target production --out .env.merged
 
 # Validate all targets for missing keys
 envchain validate
+
+# List all defined targets
+envchain list
 ```
 
 ## Commands
@@ -43,6 +46,7 @@ envchain validate
 | `run`      | Run a command with a chained environment |
 | `export`   | Export merged config to a file           |
 | `validate` | Check all targets for missing variables  |
+| `list`     | List all configured targets              |
 
 ## License
 
