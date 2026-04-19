@@ -33,6 +33,7 @@ export function mergeEnvLayers(layers: EnvVar[][]): ResolvedEnv {
 
 /**
  * Resolves variable interpolation like ${VAR_NAME} within values.
+ * References to undefined variables are replaced with an empty string.
  */
 export function interpolateEnvVars(vars: Record<string, string>): Record<string, string> {
   const resolved: Record<string, string> = {};
@@ -45,6 +46,20 @@ export function interpolateEnvVars(vars: Record<string, string>): Record<string,
   }
 
   return resolved;
+}
+
+/**
+ * Returns the list of variable names referenced via ${...} interpolation
+ * within a given value string.
+ */
+export function getInterpolationRefs(value: string): string[] {
+  const refs: string[] = [];
+  const pattern = /\$\{([^}]+)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(value)) !== null) {
+    refs.push(normalizeEnvVar(match[1]));
+  }
+  return refs;
 }
 
 /**
