@@ -24,8 +24,7 @@ export function importEnv(
     if (key in base && strategy === 'skip') {
       skipped.push(key);
     } else {
-      if (!(key in base)) added.push(key);
-      else added.push(key);
+      added.push(key);
       merged[key] = value;
     }
   }
@@ -38,6 +37,9 @@ export function importEnvFile(
   sourcePath: string,
   strategy: ImportStrategy = 'skip'
 ): ImportResult {
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error(`Source file not found: ${sourcePath}`);
+  }
   const base = fs.existsSync(targetPath)
     ? parseEnvFile(fs.readFileSync(targetPath, 'utf8'))
     : {};
