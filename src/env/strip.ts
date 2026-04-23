@@ -11,10 +11,18 @@ export interface StripResult {
   removed: string[];
 }
 
+/**
+ * Strips keys from an env object based on exact key matches or a regex pattern.
+ * Returns the original env, the stripped env, and the list of removed keys.
+ */
 export function stripEnvKeys(
   env: Record<string, string>,
   options: StripOptions
 ): StripResult {
+  if (!options.keys?.length && !options.pattern) {
+    return { original: env, stripped: { ...env }, removed: [] };
+  }
+
   const removed: string[] = [];
   const stripped: Record<string, string> = {};
 
@@ -31,6 +39,9 @@ export function stripEnvKeys(
   return { original: env, stripped, removed };
 }
 
+/**
+ * Parses an env file string and strips keys according to the provided options.
+ */
 export function stripEnvFile(
   content: string,
   options: StripOptions
