@@ -36,6 +36,12 @@ describe('groupEnvKeys', () => {
     expect(result.groups).toEqual({});
     expect(result.ungrouped).toEqual({});
   });
+
+  it('handles keys with multiple delimiters by grouping on first occurrence', () => {
+    const env = { DB_HOST_PRIMARY: 'host1', DB_HOST_SECONDARY: 'host2' };
+    const result = groupEnvKeys(env);
+    expect(result.groups['DB']).toEqual({ HOST_PRIMARY: 'host1', HOST_SECONDARY: 'host2' });
+  });
 });
 
 describe('formatGroupResult', () => {
@@ -50,5 +56,14 @@ describe('formatGroupResult', () => {
     expect(out).toContain('[ungrouped]');
     expect(out).toContain('PLAIN=val');
     expect(out).toContain('1 group(s)');
+  });
+
+  it('omits ungrouped section when all keys are grouped', () => {
+    const result = {
+      groups: { DB: { HOST: 'localhost' } },
+      ungrouped: {},
+    };
+    const out = formatGroupResult(result);
+    expect(out).not.toContain('[ungrouped]');
   });
 });
