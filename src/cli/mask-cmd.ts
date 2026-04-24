@@ -15,8 +15,14 @@ export function registerMaskCmd(program: Command): void {
       let content: string;
       try {
         content = readFileSync(envfile, 'utf8');
-      } catch {
-        console.error(`Error: cannot read file "${envfile}"`);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          console.error(`Error: file not found "${envfile}"`);
+        } else if ((err as NodeJS.ErrnoException).code === 'EACCES') {
+          console.error(`Error: permission denied reading "${envfile}"`);
+        } else {
+          console.error(`Error: cannot read file "${envfile}"`);
+        }
         process.exit(1);
       }
 
