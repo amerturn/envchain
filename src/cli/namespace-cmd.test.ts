@@ -18,6 +18,11 @@ function makeProgram() {
   return program;
 }
 
+/** Reads the content of a file and returns it as a string. */
+function readFile(p: string): string {
+  return fs.readFileSync(p, 'utf8');
+}
+
 describe('namespace-cmd', () => {
   let p: string;
   afterEach(() => p && fs.existsSync(p) && fs.unlinkSync(p));
@@ -25,7 +30,7 @@ describe('namespace-cmd', () => {
   it('applies namespace prefix to file', () => {
     p = tmpFile('FOO=bar\nBAZ=qux\n');
     makeProgram().parse(['namespace', 'APP', p], { from: 'user' });
-    const content = fs.readFileSync(p, 'utf8');
+    const content = readFile(p);
     expect(content).toContain('APP__FOO=bar');
     expect(content).toContain('APP__BAZ=qux');
   });
@@ -33,16 +38,16 @@ describe('namespace-cmd', () => {
   it('removes namespace prefix with --remove', () => {
     p = tmpFile('APP__FOO=bar\nAPP__BAZ=qux\n');
     makeProgram().parse(['namespace', 'APP', p, '--remove'], { from: 'user' });
-    const content = fs.readFileSync(p, 'utf8');
+    const content = readFile(p);
     expect(content).toContain('FOO=bar');
     expect(content).not.toContain('APP__FOO');
   });
 
   it('dry-run does not modify file', () => {
     p = tmpFile('KEY=val\n');
-    const before = fs.readFileSync(p, 'utf8');
+    const before = readFile(p);
     makeProgram().parse(['namespace', 'SVC', p, '--dry-run'], { from: 'user' });
-    const after = fs.readFileSync(p, 'utf8');
+    const after = readFile(p);
     expect(after).toBe(before);
   });
 
