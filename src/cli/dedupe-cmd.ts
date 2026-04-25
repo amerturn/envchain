@@ -15,7 +15,13 @@ export function registerDedupeCmd(program: Command): void {
         process.exit(1);
       }
 
-      const result = dedupeEnvFile(file);
+      let result;
+      try {
+        result = dedupeEnvFile(file);
+      } catch (err) {
+        console.error(`Error: failed to parse env file: ${(err as Error).message}`);
+        process.exit(1);
+      }
 
       if (!opts.quiet) {
         console.log(formatDedupeResult(result));
@@ -27,7 +33,12 @@ export function registerDedupeCmd(program: Command): void {
 
       if (opts.write) {
         const serialized = serializeEnvFile(result.deduped);
-        fs.writeFileSync(file, serialized, 'utf8');
+        try {
+          fs.writeFileSync(file, serialized, 'utf8');
+        } catch (err) {
+          console.error(`Error: failed to write file: ${(err as Error).message}`);
+          process.exit(1);
+        }
         if (!opts.quiet) {
           console.log(`Written deduped env to ${file}`);
         }
