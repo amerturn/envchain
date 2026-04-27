@@ -21,6 +21,13 @@ describe('listSnapshots', () => {
     const result = listSnapshots(dir);
     expect(result).toEqual(['a.json', 'b.json']);
   });
+
+  it('returns empty array for dir with no json files', () => {
+    const dir = tmpDir();
+    fs.writeFileSync(path.join(dir, 'notes.txt'), '');
+    fs.writeFileSync(path.join(dir, 'data.csv'), '');
+    expect(listSnapshots(dir)).toEqual([]);
+  });
 });
 
 describe('auditTarget', () => {
@@ -43,6 +50,19 @@ describe('auditTarget', () => {
     expect(entry!.removed).toContain('OLD');
     expect(entry!.added).toContain('NEW');
     expect(entry!.added).not.toContain('BAR');
+  });
+
+  it('returns entry with empty arrays when env is unchanged', () => {
+    const dir = tmpDir();
+    const snapEnv = { FOO: 'bar', BAZ: 'qux' };
+    writeSnapshot(snapshotPath(dir, 'prod'), { target: 'prod', env: snapEnv, createdAt: new Date().toISOString() });
+
+    const entry = auditTarget('prod', dir, { FOO: 'bar', BAZ: 'qux' });
+
+    expect(entry).not.toBeNull();
+    expect(entry!.added).toEqual([]);
+    expect(entry!.removed).toEqual([]);
+    expect(entry!.changed).toEqual([]);
   });
 });
 
