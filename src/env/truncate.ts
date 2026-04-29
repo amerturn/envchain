@@ -1,59 +1,61 @@
+import { readFileSync, writeFileSync } from 'fs';
 import { parseEnvFile, serializeEnvFile } from './parser';
-import fs from 'fs';
-
-export interface TruncateOptions {
-  maxLength: number;
-  suffix?: string;
-  keys?: string[];
-}
 
 export interface TruncateResult {
-  original: Record<string, string>;
   truncated: Record<string, string>;
-  affected: string[];
+  changes: string[];
 }
 
+/**
+ * Truncate env values that exceed `maxLength` characters.
+ * Returns a new map and the list of keys that were truncated.
+ */
 export function truncateEnvValues(
   env: Record<string, string>,
-  options: TruncateOptions
+  maxLength = 255
 ): TruncateResult {
-  const { maxLength, suffix = '...', keys } = options;
   const truncated: Record<string, string> = {};
-  const affected: string[] = [];
+  const changes: string[] = [];
 
   for (const [key, value] of Object.entries(env)) {
-    const shouldProcess = !keys || keys.includes(key);
-    if (shouldProcess && value.length > maxLength) {
-      const cutAt = Math.max(0, maxLength - suffix.length);
-      truncated[key] = value.slice(0, cutAt) + suffix;
-      affected.push(key);
+    if (value.length > maxLength) {
+      truncated[key] = value.slice(0, maxLength);
+      changes.push(key);
     } else {
       truncated[key] = value;
     }
   }
 
-  return { original: env, truncated, affected };
+  return { truncated, changes };
 }
 
-export function truncateEnvFile(
-  filePath: string,
-  options: TruncateOptions
-): TruncateResult {
-  const content = fs.readFileSync(filePath, 'utf8');
-  const env = parseEnvFile(content);
-  const result = truncateEnvValues(env, options);
-  fs.writeFileSync(filePath, serializeEnvFile(result.truncated), 'utf8');
+/**
+ * Read an env file, truncate values, write back, and return the result.
+ */
+export function truncateEnvFile(filePath: string, maxLength = 255): TruncateResult {
+  const raw = readFileSync(filePath, 'utf8');
+  const env = parseEnvFile(raw);
+  const result = truncateEnvValues(env, maxLength);
+
+  if (result.changes.length > 0) {
+    writeFileSync(filePath, serializeEnvFile(result.truncated), 'utf8');
+  }
+
   return result;
 }
 
+/**
+ * Format a human-readable summary of the truncate operation.
+ */
 export function formatTruncateResult(result: TruncateResult): string {
-  if (result.affected.length === 0) {
-    return 'No values were truncated.';
+  if (result.changes.length === 0) {
+    return 'No values truncated.';
   }
-  const lines = result.affected.map((key) => {
-    const before = result.original[key];
-    const after = result.truncated[key];
-    return `  ${key}: "${before}" → "${after}"`;
-  });
-  return `Truncated ${result.affected.length} value(s):\n${lines.join('\n')}`;
+
+  const lines = [
+    `Truncated ${result.changes.length} value(s):`,
+    ...result.changes.map((key) => `  - ${key}`),
+  ];
+
+  return lines.join('\n');
 }

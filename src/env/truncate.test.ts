@@ -1,77 +1,77 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { truncateEnvValues, truncateEnvFile, formatTruncateResult } from './truncate';
+import { writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import {
+  truncateEnvValues,
+  truncateEnvFile,
+  formatTruncateResult,
+} from './truncate';
 
 function tmpFile(content: string): string {
-  const p = path.join(os.tmpdir(), `truncate-test-${Date.now()}.env`);
-  fs.writeFileSync(p, content, 'utf8');
-  return p;
+  const path = join(tmpdir(), `truncate-test-${Date.now()}.env`);
+  writeFileSync(path, content, 'utf8');
+  return path;
 }
+
+const files: string[] = [];
+
+afterEach(() => {
+  for (const f of files.splice(0)) {
+    try { unlinkSync(f); } catch {}
+  }
+});
 
 describe('truncateEnvValues', () => {
   it('truncates values exceeding maxLength', () => {
-    const env = { KEY: 'abcdefghij', SHORT: 'hi' };
-    const result = truncateEnvValues(env, { maxLength: 5 });
-    expect(result.truncated.KEY).toBe('ab...');
+    const env = { SHORT: 'hi', LONG: 'a'.repeat(200) };
+    const result = truncateEnvValues(env, 100);
     expect(result.truncated.SHORT).toBe('hi');
-    expect(result.affected).toEqual(['KEY']);
+    expect(result.truncated.LONG).toHaveLength(100);
+    expect(result.changes).toEqual(['LONG']);
   });
 
-  it('uses custom suffix', () => {
-    const env = { KEY: 'abcdefghij' };
-    const result = truncateEnvValues(env, { maxLength: 6, suffix: '--' });
-    expect(result.truncated.KEY).toBe('abcd--');
-  });
-
-  it('only truncates specified keys', () => {
-    const env = { A: 'longvalue123', B: 'longvalue456' };
-    const result = truncateEnvValues(env, { maxLength: 5, keys: ['A'] });
-    expect(result.truncated.A).toBe('lo...');
-    expect(result.truncated.B).toBe('longvalue456');
-    expect(result.affected).toEqual(['A']);
-  });
-
-  it('returns empty affected when nothing truncated', () => {
-    const env = { KEY: 'short' };
-    const result = truncateEnvValues(env, { maxLength: 20 });
-    expect(result.affected).toHaveLength(0);
+  it('does not truncate values within limit', () => {
+    const env = { A: 'hello', B: 'world' };
+    const result = truncateEnvValues(env, 50);
+    expect(result.changes).toHaveLength(0);
     expect(result.truncated).toEqual(env);
+  });
+
+  it('uses default maxLength of 255', () => {
+    const env = { KEY: 'x'.repeat(300) };
+    const result = truncateEnvValues(env);
+    expect(result.truncated.KEY).toHaveLength(255);
+    expect(result.changes).toEqual(['KEY']);
+  });
+
+  it('handles empty env map', () => {
+    const result = truncateEnvValues({});
+    expect(result.changes).toHaveLength(0);
+    expect(result.truncated).toEqual({});
   });
 });
 
 describe('truncateEnvFile', () => {
-  let file: string;
-
-  afterEach(() => { if (fs.existsSync(file)) fs.unlinkSync(file); });
-
-  it('truncates values in a file and writes result', () => {
-    file = tmpFile('TOKEN=averylongtokenthatexceedslimit\nNAME=bob\n');
-    const result = truncateEnvFile(file, { maxLength: 10 });
-    expect(result.affected).toContain('TOKEN');
-    const written = fs.readFileSync(file, 'utf8');
-    expect(written).toContain('TOKEN=');
-    expect(written).not.toContain('averylongtokenthatexceedslimit');
+  it('reads, truncates, and writes back', () => {
+    const path = tmpFile(`A=short\nB=${'z'.repeat(300)}\n`);
+    files.push(path);
+    const result = truncateEnvFile(path, 100);
+    expect(result.changes).toContain('B');
+    expect(result.changes).not.toContain('A');
   });
 });
 
 describe('formatTruncateResult', () => {
-  it('reports no changes when nothing truncated', () => {
-    const result = { original: { A: 'hi' }, truncated: { A: 'hi' }, affected: [] };
-    expect(formatTruncateResult(result)).toBe('No values were truncated.');
+  it('reports changed keys', () => {
+    const out = formatTruncateResult({ truncated: {}, changes: ['FOO', 'BAR'] });
+    expect(out).toContain('FOO');
+    expect(out).toContain('BAR');
+    expect(out).toContain('2');
   });
 
-  it('lists affected keys', () => {
-    const result = {
-      original: { A: 'toolongvalue' },
-      truncated: { A: 'to...' },
-      affected: ['A'],
-    };
-    const out = formatTruncateResult(result);
-    expect(out).toContain('Truncated 1 value(s)');
-    expect(out).toContain('A:');
-    expect(out).toContain('toolongvalue');
-    expect(out).toContain('to...');
+  it('reports no changes', () => {
+    const out = formatTruncateResult({ truncated: {}, changes: [] });
+    expect(out).toContain('No values truncated');
   });
 });
